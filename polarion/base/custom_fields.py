@@ -11,7 +11,7 @@ class CustomFields(PolarionObject, ABC):
     def isCustomFieldAllowed(self, key):
         raise NotImplementedError
 
-    def setCustomField(self, key, value):
+    def setCustomField(self, key, value, save=True):
         """
         Set the custom field 'key' to the value
         :param key: custom field key
@@ -34,7 +34,9 @@ class CustomFields(PolarionObject, ABC):
             else:
                 # custom field is not there, add it.
                 self.customFields.Custom.append(self._polarion.CustomType(key=key, value=value))
-        self.save()
+        
+        if save:
+            self.save()
 
     def getCustomField(self, key):
         """

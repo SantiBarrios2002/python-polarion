@@ -127,6 +127,67 @@ class Project(object):
         """
         return Workitem(self.polarion, self, new_workitem_type=workitem_type, new_workitem_fields=new_workitem_fields)
 
+    def createMultipleWorkitems(self, workitems_data):
+        """
+        Create multiple workitems based on the provided data.
+        :param workitems_data: A list of dictionaries, each containing 'workitem_type', 'new_workitem_fields', 'custom_fields', and 'description'
+        :return: A list of created workitems
+        :rtype: list of Workitem
+        """
+        created_workitems = []
+        workitem_references= {}
+
+        # First pass: Create all work items without saving
+        for index, data in enumerate(workitems_data):
+            workitem_type = data.get('workitem_type')
+            new_workitem_fields = data.get('new_workitem_fields')
+            custom_fields = data.get('custom_fields', {})
+            description = data.get('description', '')
+
+            # Create the work item without saving
+            workitem = self.createWorkitem(workitem_type, new_workitem_fields)
+
+            # Set custom fields without saving
+            for key, value in custom_fields.items():
+                if isinstance(value, list):
+                    array_of_enum = self.polarion.ArrayOfEnumOptionIdType()
+                    for item in value:
+                        array_of_enum.EnumOptionId.append(self.polarion.EnumOptionIdType(id=item))
+                    workitem.setCustomField(key, array_of_enum, save=False)
+                else:
+                    workitem.setCustomField(key, value, save=False)
+
+            # Set description without saving
+            if description:
+                workitem.setDescription(description, save=False)
+
+           # Store reference to the work item
+            workitem_references[index] = workitem
+           
+            # Add the work item to the list
+            created_workitems.append(workitem)
+
+        # Second pass: Saves all work items
+        for workitem in created_workitems:
+            workitem.save()
+        
+        # Third pass: Link work items and move them to their respective documents
+        for index, data in enumerate(workitems_data):
+            links = data.get('links', [])
+            for link in links:
+                target_index = link.get('target_index')
+                link_role = link.get('link_role')
+                if target_index in workitem_references:
+                    target_workitem = workitem_references[target_index]
+                    created_workitems[index].addLinkedWorkitem(target_workitem.uri, link_role)
+                    
+            document = data.get('document')
+            parent_workitem = data.get('parent')
+            if document:
+                created_workitems[index].moveToDocument(document, parent_workitem)
+
+        return created_workitems
+
     def searchWorkitem(self, query='', order='Created', field_list=None, limit=-1):
         """Query for available workitems. This will only query for the items.
         If you also want the Workitems to be retrieved, used searchWorkitemFullItem.

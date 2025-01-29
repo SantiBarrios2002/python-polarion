@@ -371,7 +371,7 @@ class Workitem(CustomFields, Comments):
             return self.description.content
         return None
 
-    def setDescription(self, description):
+    def setDescription(self, description, save=True):
         """
         Sets the description and saves the workitem
 
@@ -379,7 +379,8 @@ class Workitem(CustomFields, Comments):
         """
         self.description = self._polarion.TextType(
             content=description, type='text/html', contentLossy=False)
-        self.save()
+        if save:
+            self.save()
 
     def setResolution(self, resolution):
         """
